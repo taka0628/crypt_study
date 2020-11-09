@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <ctype.h> //iscntrl
 #include <sys/stat.h>
+#include <sys/wait.h> //waitpid
 #include <fcntl.h>
 
 #define PORT_NUM 8080
@@ -186,6 +187,13 @@ void child_process(int sock)
     close(sock);
 }
 
+int end_fork_cnt = 0;
+
+void child_end(int sig)
+{
+    end_fork_cnt++;
+}
+
 int main()
 {
     int sock0;
@@ -243,13 +251,22 @@ int main()
         close(sock0);
         return 1;
     }
-
+    pid_t pid;
     while (1)
     {
-        while (waitpid(-1, NULL, WNOHANG))
+        if (signal(SIGCHLD, child_end) == SIG_ERR)
         {
-            puts("comp_process");
+            ERROR;
+            end_connect(sock, sock0);
+            return 1;
         }
+        for (int i = 0; i < end_fork_cnt; i++)
+        {
+            waitpid(-1, NULL, WNOHANG);
+            puts("fork_process_end");
+            end_fork_cnt--;
+        }
+
         /* TCPクライアントからの接続要求を受け付ける */
         len = sizeof(client);
         sock = accept(sock0, (struct sockaddr *)&client, &len);
@@ -262,11 +279,19 @@ int main()
             close(sock0);
             return 1;
         }
-        pid_t pid = fork();
-        if (pid == 0)
+        pid = fork();
+        if (pid < 0)
+        {
+            puts("fork error");
+            ERROR;
+            break;
+        }
+        else if (pid == 0)
         {
             child_process(sock);
+            exit(1);
         }
+        close(sock);
     }
     end_connect(sock, sock0);
     return 0;
