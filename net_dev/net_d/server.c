@@ -127,6 +127,65 @@ void end_connect(int sock, int sock0)
     close(sock0);
 }
 
+void child_process(int sock)
+{
+    char recieve_message[1024];
+    char *temp;
+
+    memset(recieve_message, 0, sizeof(recieve_message));
+    if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
+    {
+        ERROR;
+        perror("read");
+        close(sock);
+        return;
+    }
+    // printf("%s\n", recieve_message);
+    print_character_code(recieve_message, sizeof(recieve_message));
+
+    array_t path, send_data;
+    path.array = new_array(&path, 2048);
+    send_data.array = new_array(&send_data, 2048);
+
+    get_path_form_http(recieve_message, &path);
+    int fd = 0;
+    int n = 0;
+    char exit_file_message[] = {"HTTP/1.0 200 OK\r\n"};
+    char no_file_message[] = {"HTTP/1.0 404 Not Found\r\n"};
+    if ((fd = open(path.array, O_RDONLY)) < 0)
+    {
+        puts("404");
+        if (write(sock, no_file_message, strlen(no_file_message)) < 0)
+        {
+            ERROR;
+            return;
+        }
+        printf("send->");
+        print_character_code(no_file_message, strlen(no_file_message));
+    }
+    else
+    {
+        puts("exit file");
+        if (write(sock, exit_file_message, strlen(exit_file_message)) < 0)
+        {
+            ERROR;
+            return;
+        }
+        write(sock, "\r\n", strlen("\r\n"));
+        while ((n = read(fd, send_data.array, send_data.size)))
+        {
+            if (write(sock, send_data.array, n) < 0)
+            {
+                ERROR;
+                return;
+            }
+        }
+        printf("send->");
+        print_character_code(exit_file_message, strlen(exit_file_message));
+    }
+    close(sock);
+}
+
 int main()
 {
     int sock0;
@@ -187,6 +246,10 @@ int main()
 
     while (1)
     {
+        while (waitpid(-1, NULL, WNOHANG))
+        {
+            puts("comp_process");
+        }
         /* TCPクライアントからの接続要求を受け付ける */
         len = sizeof(client);
         sock = accept(sock0, (struct sockaddr *)&client, &len);
@@ -199,65 +262,11 @@ int main()
             close(sock0);
             return 1;
         }
-
-        char recieve_message[1024];
-        char *temp;
-
-        memset(recieve_message, 0, sizeof(recieve_message));
-        if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
+        pid_t pid = fork();
+        if (pid == 0)
         {
-            ERROR;
-            perror("read");
-            close(sock);
-            return 1;
+            child_process(sock);
         }
-        // printf("%s\n", recieve_message);
-        print_character_code(recieve_message, sizeof(recieve_message));
-
-        array_t path, send_data;
-        path.array = new_array(&path, 2048);
-        send_data.array = new_array(&send_data, 2048);
-
-        get_path_form_http(recieve_message, &path);
-        int fd = 0;
-        int n = 0;
-        char exit_file_message[] = {"HTTP/1.0 200 OK\r\n"};
-        char no_file_message[] = {"HTTP/1.0 404 Not Found\r\n"};
-        if ((fd = open(path.array, O_RDONLY)) < 0)
-        {
-            puts("404");
-            if (write(sock, no_file_message, strlen(no_file_message)) < 0)
-            {
-                ERROR;
-                end_connect(sock, sock0);
-                return 1;
-            }
-            printf("send->");
-            print_character_code(no_file_message, strlen(no_file_message));
-        }
-        else
-        {
-            puts("exit file");
-            if (write(sock, exit_file_message, strlen(exit_file_message)) < 0)
-            {
-                ERROR;
-                end_connect(sock, sock0);
-                return 1;
-            }
-            write(sock, "\r\n", strlen("\r\n"));
-            while ((n = read(fd, send_data.array, send_data.size)))
-            {
-                if (write(sock, send_data.array, n) < 0)
-                {
-                    ERROR;
-                    end_connect(sock, sock0);
-                    return 1;
-                }
-            }
-            printf("send->");
-            print_character_code(exit_file_message, strlen(exit_file_message));
-        }
-        close(sock);
     }
     end_connect(sock, sock0);
     return 0;

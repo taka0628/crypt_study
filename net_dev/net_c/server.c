@@ -11,6 +11,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+// 3346 req/s
+
 #define PORT_NUM 8080
 #define END_KEY "quit"
 
