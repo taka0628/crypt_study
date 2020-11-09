@@ -9,10 +9,11 @@
 #include <stdbool.h>
 #include <ctype.h> //iscntrl
 #include <sys/stat.h>
-#include <sys/wait.h> //waitpid
 #include <fcntl.h>
+#include <pthread.h>
 
 #define PORT_NUM 8080
+#define THREAD_SIZE 4
 #define END_KEY "quit"
 
 #define ERROR (printf("[ERROR]\n%s: %d\n", __func__, __LINE__))
@@ -22,6 +23,14 @@ typedef struct
     char *array;
     int size;
 } array_t;
+
+typedef struct
+{
+    pthread_t th;
+    int sock;
+    bool is_wait;
+    bool is_use;
+} thread_contents_t;
 
 char *new_array(array_t *array, int const size)
 {
@@ -128,10 +137,17 @@ void end_connect(int sock, int sock0)
     close(sock0);
 }
 
-void child_process(int sock)
+void *thread_process(void *argument)
 {
+    thread_contents_t *data = argument;
+    int sock = data->sock;
     char recieve_message[1024];
     char *temp;
+    while (data->is_wait == true)
+    {
+        usleep(100);
+    }
+    data->is_use = true;
 
     memset(recieve_message, 0, sizeof(recieve_message));
     if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
@@ -169,22 +185,27 @@ void child_process(int sock)
         puts("exit file");
         if (write(sock, exit_file_message, strlen(exit_file_message)) < 0)
         {
-            ERROR;
-            return;
+            close(sock);
+            pthread_detach(pthread_self());
+            pthread_exit(NULL);
         }
         write(sock, "\r\n", strlen("\r\n"));
         while ((n = read(fd, send_data.array, send_data.size)))
         {
             if (write(sock, send_data.array, n) < 0)
             {
-                ERROR;
-                return;
+                close(sock);
+                pthread_detach(pthread_self());
+                pthread_exit(NULL);
             }
         }
         printf("send->");
         print_character_code(exit_file_message, strlen(exit_file_message));
     }
+    data->is_use = false;
     close(sock);
+    pthread_detach(pthread_self());
+    pthread_exit(NULL);
 }
 
 int end_fork_cnt = 0;
@@ -251,16 +272,18 @@ int main()
         close(sock0);
         return 1;
     }
-    pid_t pid;
+    pthread_t th;
+    thread_contents_t *contents = (thread_contents_t *)malloc(sizeof(thread_contents_t) * THREAD_SIZE);
+    for (int i = 0; i < THREAD_SIZE; i++)
+    {
+        contents[i].is_wait = true;
+        contents[i].is_use = false;
+        pthread_create(&contents[i].th, NULL, thread_process, &contents[i]);
+    }
+
+    int thread_idx = 0;
     while (1)
     {
-        for (int i = 0; i < end_fork_cnt; i++)
-        {
-            waitpid(-1, NULL, WNOHANG);
-            puts("fork_process_end");
-            end_fork_cnt--;
-        }
-
         /* TCPクライアントからの接続要求を受け付ける */
         len = sizeof(client);
         sock = accept(sock0, (struct sockaddr *)&client, &len);
@@ -273,19 +296,20 @@ int main()
             close(sock0);
             return 1;
         }
-        pid = fork();
-        if (pid < 0)
+        if (contents[thread_idx].is_use == true)
         {
-            puts("fork error");
-            ERROR;
-            break;
+            pthread_join(contents[thread_idx].th, NULL);
         }
-        else if (pid == 0)
+        else
         {
-            child_process(sock);
-            exit(1);
+            contents[thread_idx].sock = sock;
+            contents[thread_idx].is_wait = false;
+            thread_idx++;
+            if (thread_idx >= THREAD_SIZE)
+            {
+                thread_idx = 0;
+            }
         }
-        close(sock);
     }
     end_connect(sock, sock0);
     return 0;

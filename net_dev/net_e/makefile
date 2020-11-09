@@ -1,7 +1,7 @@
 TARGET_1 := server
 SORCE_1 := server.c
 CC	:= gcc
-CFLAGS	:=
+CFLAGS	:= -pthread
 RM	:= /bin/rm
 
 all:
