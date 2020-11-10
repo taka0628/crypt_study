@@ -11,6 +11,7 @@
 // 学生番号26001902600
 #define ADDRESS ("239.126.100.1")
 #define BUFF_SIZE (10000)
+#define END_KEY ("end")   //受信を終了させるキー
 
 #define ERROR (printf("[ERROR]\n%s: %d\n\n", __func__, __LINE__))
 
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    ret = sendto(sock_send, "end", 3, 0, (struct sockaddr *)&addr, sizeof(addr));
+    ret = sendto(sock_send, END_KEY, strlen(END_KEY), 0, (struct sockaddr *)&addr, sizeof(addr));
     close(sock_send);
     return 0;
 }

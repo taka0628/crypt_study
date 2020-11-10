@@ -8,10 +8,12 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 // 学生番号26001902600
 #define ADDRESS ("239.126.100.1")
-#define BUFF_SIZE (10000)   //受け取るパケット容量
+#define BUFF_SIZE (10000) //受け取るパケット容量
+#define END_KEY ("end")   //受信を終了させるキー
 
 #define DATA_ARRAY_SIZE (4) //スレッドへ渡す構造体の数。コンフリクトをさけるため複数個を設定
 
@@ -35,6 +37,7 @@ void *thread_write(void *argument)
         exit(1);
     }
     memset(data->file_data, 0, sizeof(data->data_size));
+    pthread_detach(pthread_self());
     pthread_exit(NULL);
 }
 
@@ -97,6 +100,7 @@ int main()
     {
         memset(contents[i].file_data, 0, buff_size);
         contents[i].fd = 0;
+        contents[i].data_size = 0;
     }
 
     // ファイル名を取得
@@ -123,6 +127,10 @@ int main()
     while ((contents[idx].data_size = read(sock_rcv, contents[idx].file_data, buff_size)) > 0)
     {
         // printf("size: %d\n", contents[idx].data_size);
+        if (strlen(contents[idx].file_data) == strlen(END_KEY) && strstr(contents[idx].file_data, END_KEY) != NULL)
+        {
+            break;
+        }
         if (pthread_create(&th, NULL, thread_write, &contents[idx]) != 0)
         {
             ERROR;
@@ -139,9 +147,7 @@ int main()
     }
     puts("end");
     close(sock_rcv);
-    for (int i = 0; i < DATA_ARRAY_SIZE; i++)
-    {
-        free(&contents[i]);
-    }
+    free(contents);
+    puts("mem free");
     return 0;
 }
