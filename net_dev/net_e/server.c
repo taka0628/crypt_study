@@ -18,6 +18,7 @@
 
 #define ERROR (printf("[ERROR]\n%s: %d\n", __func__, __LINE__))
 
+// 動的確保するメモリの大きさも保存しておく構造体。
 typedef struct
 {
     char *array;
@@ -26,12 +27,16 @@ typedef struct
 
 typedef struct
 {
-    pthread_t th;
-    int sock;
-    bool is_wait;
-    bool is_use;
+    pthread_t th;//スレッドID
+    pthread_mutex_t mp;//排他アクセス
+    pthread_cond_t sig;//シグナル
+    int sock;//通信するソケットID
+    int th_idx;//スレッド番号
+    bool is_wait;//スレッドを待機するか？
+    bool is_use;//スレッドが使用中か？
 } thread_contents_t;
 
+// メモリの動的確保をする際に確保したサイズも保存する
 char *new_array(array_t *array, int const size)
 {
     char *p = (char *)malloc(size);
@@ -40,47 +45,29 @@ char *new_array(array_t *array, int const size)
     return p;
 }
 
-void input_reception(char *result, int size)
-{
-    char *p = NULL;
-    fgets(result, size, stdin);
-    if ((p = strchr(result, '\n')) != NULL)
-    {
-        *p = '\0';
-        p = NULL;
-    }
-}
-
-bool string_check(char const *sorce, char const *key)
-{
-    int len = strlen(key);
-    if (strchr(sorce, '\n') != NULL)
-    {
-        len++;
-    }
-    if (strlen(sorce) == len && strstr(sorce, key) != NULL)
-    {
-        return true;
-    }
-    return false;
-}
-
+#define CHARACTER_DEBAG 0
+// 制御文字も16進数表記で出力
 void print_character_code(char *sorce, int size)
 {
-    for (int i = 0; i < strlen(sorce); i++)
+    if (CHARACTER_DEBAG)
     {
-        if (iscntrl(sorce[i]) == 0)
+        for (int i = 0; i < strlen(sorce); i++)
         {
-            printf("%c", sorce[i]);
+            if (iscntrl(sorce[i]) == 0)
+            {
+                printf("%c", sorce[i]);
+            }
+            else
+            {
+                printf("<0x%02x>", sorce[i]);
+            }
         }
-        else
-        {
-            printf("<0x%02x>", sorce[i]);
-        }
+        puts("");
     }
-    puts("");
 }
 
+#define PATH_DEBAG 0
+// httpで送られてきた文字列から絶対パスを生成
 void get_path_form_http(char *http, array_t *result_path)
 {
     char temp_1[2048] = {'\0'};
@@ -97,16 +84,20 @@ void get_path_form_http(char *http, array_t *result_path)
     {
         // printf("\npath: %s\n", http);
         sscanf(http, "GET %s HTTP%s", temp_2, temp_1);
-        printf("\npath: %s\n", temp_2);
+        if (PATH_DEBAG)
+            printf("\npath: %s\n", temp_2);
         sprintf(temp_1, "/home/taka/htdocs%s", temp_2);
-        printf("\npath: %s\n", temp_1);
+        if (PATH_DEBAG)
+            printf("\npath: %s\n", temp_1);
         strncpy(temp_2, temp_1, sizeof(temp_2));
         struct stat st;
         stat(temp_1, &st);
-        printf("ISREG: %d\n", S_ISREG(st.st_mode));
+        if (PATH_DEBAG)
+            printf("ISREG: %d\n", S_ISREG(st.st_mode));
         if (S_ISREG(st.st_mode))
         {
-            puts("file");
+            if (PATH_DEBAG)
+                puts("file");
             strncpy(result_path->array, temp_1, result_path->size);
             return;
         }
@@ -122,7 +113,6 @@ void get_path_form_http(char *http, array_t *result_path)
                 sprintf(result_path->array, "%s/index.html", temp_2);
             }
             printf("path: %s\n", result_path->array);
-            // }
         }
     }
 }
@@ -137,82 +127,113 @@ void end_connect(int sock, int sock0)
     close(sock0);
 }
 
+#define TH_DEBAG 1
+#define HTTP_DEBAG 0
 void *thread_process(void *argument)
 {
     thread_contents_t *data = argument;
-    int sock = data->sock;
+    if (TH_DEBAG)
+        printf("thread[%d] crate\n", data->th_idx);
+
+    int sock = 0;
     char recieve_message[1024];
     char *temp;
-    while (data->is_wait == true)
-    {
-        usleep(100);
-    }
-    data->is_use = true;
-
-    memset(recieve_message, 0, sizeof(recieve_message));
-    if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
-    {
-        ERROR;
-        perror("read");
-        close(sock);
-        return;
-    }
-    // printf("%s\n", recieve_message);
-    print_character_code(recieve_message, sizeof(recieve_message));
-
     array_t path, send_data;
-    path.array = new_array(&path, 2048);
-    send_data.array = new_array(&send_data, 2048);
-
-    get_path_form_http(recieve_message, &path);
     int fd = 0;
     int n = 0;
     char exit_file_message[] = {"HTTP/1.0 200 OK\r\n"};
     char no_file_message[] = {"HTTP/1.0 404 Not Found\r\n"};
-    if ((fd = open(path.array, O_RDONLY)) < 0)
+
+    while (1)
     {
-        puts("404");
-        if (write(sock, no_file_message, strlen(no_file_message)) < 0)
+        // クリティカルセッション
+        pthread_mutex_lock(&data->mp);
+        // シグナルが送られてくるまでスリープ
+        while (data->is_wait == true)
+        {
+            if (TH_DEBAG)
+                printf("thread[%d] sleep\n", data->th_idx);
+            pthread_cond_wait(&data->sig, &data->mp);
+        }
+        if (TH_DEBAG)
+            printf("\nthread[%d] wakeup\n", data->th_idx);
+
+        data->is_use = true;
+        sock = data->sock;
+
+        memset(recieve_message, 0, sizeof(recieve_message));
+        if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
         {
             ERROR;
-            return;
-        }
-        printf("send->");
-        print_character_code(no_file_message, strlen(no_file_message));
-    }
-    else
-    {
-        puts("exit file");
-        if (write(sock, exit_file_message, strlen(exit_file_message)) < 0)
-        {
+            perror("read");
             close(sock);
-            pthread_detach(pthread_self());
             pthread_exit(NULL);
         }
-        write(sock, "\r\n", strlen("\r\n"));
-        while ((n = read(fd, send_data.array, send_data.size)))
+        if (HTTP_DEBAG)
         {
-            if (write(sock, send_data.array, n) < 0)
+            printf("%s\n", recieve_message);
+            print_character_code(recieve_message, sizeof(recieve_message));
+        }
+
+        path.array = new_array(&path, 2048);
+        send_data.array = new_array(&send_data, 2048);
+
+        get_path_form_http(recieve_message, &path);
+
+        if ((fd = open(path.array, O_RDONLY)) < 0)
+        {
+            puts("404");
+            if (write(sock, no_file_message, strlen(no_file_message)) < 0)
             {
+                ERROR;
+                pthread_exit(NULL);
+            }
+            if (HTTP_DEBAG)
+            {
+                printf("send->");
+                print_character_code(no_file_message, strlen(no_file_message));
+            }
+        }
+        else
+        {
+            if (HTTP_DEBAG)
+            {
+                puts("exit file");
+            }
+
+            if (write(sock, exit_file_message, strlen(exit_file_message)) < 0)
+            {
+                ERROR;
+                perror("write");
                 close(sock);
                 pthread_detach(pthread_self());
                 pthread_exit(NULL);
             }
+            write(sock, "\r\n", strlen("\r\n"));
+            while ((n = read(fd, send_data.array, send_data.size)))
+            {
+                if (write(sock, send_data.array, n) < 0)
+                {
+                    close(sock);
+                    pthread_detach(pthread_self());
+                    pthread_exit(NULL);
+                }
+            }
+            if (HTTP_DEBAG)
+            {
+                printf("all data send");
+            }
         }
-        printf("send->");
-        print_character_code(exit_file_message, strlen(exit_file_message));
+        free(send_data.array);
+        free(path.array);
+        data->is_use = false;
+        data->is_wait = true;
+        close(sock);
+        pthread_mutex_unlock(&data->mp);
     }
-    data->is_use = false;
-    close(sock);
+
     pthread_detach(pthread_self());
     pthread_exit(NULL);
-}
-
-int end_fork_cnt = 0;
-
-void child_end(int sig)
-{
-    end_fork_cnt++;
 }
 
 int main()
@@ -276,8 +297,13 @@ int main()
     thread_contents_t *contents = (thread_contents_t *)malloc(sizeof(thread_contents_t) * THREAD_SIZE);
     for (int i = 0; i < THREAD_SIZE; i++)
     {
-        contents[i].is_wait = true;
+        pthread_mutex_init(&contents[i].mp, NULL);
+        contents[i].is_wait = true;//trueにしている限りスレッドはスリープする
         contents[i].is_use = false;
+        contents[i].th_idx = i;
+    }
+    for (int i = 0; i < THREAD_SIZE; i++)
+    {
         pthread_create(&contents[i].th, NULL, thread_process, &contents[i]);
     }
 
@@ -296,20 +322,20 @@ int main()
             close(sock0);
             return 1;
         }
-        if (contents[thread_idx].is_use == true)
+        pthread_mutex_lock(&contents[thread_idx].mp);
+        contents[thread_idx].sock = sock;
+        contents[thread_idx].is_wait = false;
+        pthread_mutex_unlock(&contents[thread_idx].mp);
+        pthread_cond_signal(&contents[thread_idx].sig);
+        thread_idx++;
+        if (thread_idx >= THREAD_SIZE)
         {
-            pthread_join(contents[thread_idx].th, NULL);
+            thread_idx = 0;
         }
-        else
-        {
-            contents[thread_idx].sock = sock;
-            contents[thread_idx].is_wait = false;
-            thread_idx++;
-            if (thread_idx >= THREAD_SIZE)
-            {
-                thread_idx = 0;
-            }
-        }
+    }
+    for (int i = 0; i < THREAD_SIZE; i++)
+    {
+        pthread_mutex_destroy(&contents[i].mp);
     }
     end_connect(sock, sock0);
     return 0;
