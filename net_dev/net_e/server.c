@@ -12,8 +12,10 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+// 4543.3 req/s
+
 #define PORT_NUM 8080
-#define THREAD_SIZE 4
+#define THREAD_SIZE 8
 #define END_KEY "quit"
 
 #define ERROR (printf("[ERROR]\n%s: %d\n", __func__, __LINE__))
