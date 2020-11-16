@@ -138,6 +138,9 @@ void *thread_process(void *argument)
         printf("thread[%d] crate\n", data->th_idx);
 
     int sock = 0;
+    int sock0 = 0;
+    struct sockaddr_in client;
+    int len = sizeof(client);
     char recieve_message[1024];
     char *temp;
     array_t path, send_data;
@@ -148,20 +151,17 @@ void *thread_process(void *argument)
 
     while (1)
     {
-        // クリティカルセッション
-        pthread_mutex_lock(&data->mp);
-        // シグナルが送られてくるまでスリープ
-        while (data->is_wait == true)
+        sock0 = data->sock;
+        sock = accept(sock0, (struct sockaddr *)&client, &len);
+        if (sock < 0)
         {
-            if (TH_DEBAG)
-                printf("thread[%d] sleep\n", data->th_idx);
-            pthread_cond_wait(&data->sig, &data->mp);
+            ERROR;
+            perror("accept");
+            printf("%d\n", errno);
+            close(sock);
+            close(sock0);
+            return NULL;
         }
-        if (TH_DEBAG)
-            printf("\nthread[%d] wakeup\n", data->th_idx);
-
-        data->is_use = true;
-        sock = data->sock;
 
         memset(recieve_message, 0, sizeof(recieve_message));
         if (read(sock, recieve_message, sizeof(recieve_message)) < 0)
@@ -228,10 +228,7 @@ void *thread_process(void *argument)
         }
         free(send_data.array);
         free(path.array);
-        data->is_use = false;
-        data->is_wait = true;
         close(sock);
-        pthread_mutex_unlock(&data->mp);
     }
 
     pthread_detach(pthread_self());
@@ -242,7 +239,6 @@ int main()
 {
     int sock0;
     struct sockaddr_in addr;
-    struct sockaddr_in client;
     socklen_t len;
     int sock;
     int port_num = PORT_NUM;
@@ -303,41 +299,15 @@ int main()
         contents[i].is_wait = true; //trueにしている限りスレッドはスリープする
         contents[i].is_use = false;
         contents[i].th_idx = i;
+        contents[i].sock = sock0;
     }
     for (int i = 0; i < THREAD_SIZE; i++)
     {
         pthread_create(&contents[i].th, NULL, thread_process, &contents[i]);
     }
 
-    int thread_idx = 0;
-    while (1)
-    {
-        /* TCPクライアントからの接続要求を受け付ける */
-        len = sizeof(client);
-        sock = accept(sock0, (struct sockaddr *)&client, &len);
-        if (sock < 0)
-        {
-            ERROR;
-            perror("accept");
-            printf("%d\n", errno);
-            close(sock);
-            close(sock0);
-            return 1;
-        }
-        pthread_mutex_lock(&contents[thread_idx].mp);
-        contents[thread_idx].sock = sock;
-        contents[thread_idx].is_wait = false;
-        pthread_mutex_unlock(&contents[thread_idx].mp);
-        pthread_cond_signal(&contents[thread_idx].sig);
-        thread_idx++;
-        if (thread_idx >= THREAD_SIZE)
-        {
-            thread_idx = 0;
-        }
-    }
-    for (int i = 0; i < THREAD_SIZE; i++)
-    {
-        pthread_mutex_destroy(&contents[i].mp);
+    while(1){
+        sleep(1);
     }
     end_connect(sock, sock0);
     return 0;
