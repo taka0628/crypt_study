@@ -78,6 +78,7 @@ void loop()
   memcpy((byte *)&recv_value, value, 2);
 
   /** セントラルから受信した値に対する処理 **/
+  analogWrite(pinled, recv_value);
   Serial.print("Received: ");
   Serial.println(recv_value);
   /*************************************/
