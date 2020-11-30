@@ -4,12 +4,15 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <time.h>
+#include <fcntl.h>
 
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+
+#define ERROR (printf("[ERROR]\n%s: %d\n", __func__, __LINE__))
 
 void encrypt(char *out, const char *in, const uint8_t *key, const uint8_t *iv, int size)
 {
@@ -81,26 +84,45 @@ void print(char *header, uint8_t *buf, int size)
     printf("\n");
 }
 
-void create_DH_key(DH *a, int keyLen, int code)
+bool DH_code_check(int code)
 {
-    puts("DH start");
-    DH_check(a, &code);
     if (code & DH_CHECK_P_NOT_PRIME)
     {
         fprintf(stderr, "p value is not prime\n");
+        return false;
     }
     if (code & DH_CHECK_P_NOT_SAFE_PRIME)
     {
         fprintf(stderr, "p value is not a safe prime\n");
+        return false;
     }
     if (code & DH_UNABLE_TO_CHECK_GENERATOR)
     {
         fprintf(stderr, "unable to check the generator value\n");
+        return false;
     }
     if (code & DH_NOT_SUITABLE_GENERATOR)
     {
         fprintf(stderr, "the g value is not a generator\n");
+        return false;
     }
+    return true;
+}
+
+bool DH_first_set(DH *a, int keyLen, int code)
+{
+    puts("DH start");
+    DH_check(a, &code);
+    if (DH_code_check(code) == false)
+    {
+        ERROR;
+        puts("DH_key is not safe");
+        exit(1);
+    }
+}
+
+void create_DH_key(DH *a, BIGNUM *pub_key, BIGNUM *priv_key)
+{
 
     printf("\n");
     DHparams_print_fp(stdout, a);
@@ -108,11 +130,11 @@ void create_DH_key(DH *a, int keyLen, int code)
 
     DH_generate_key(a);
 
-    const BIGNUM *a_pub_key;
-    const BIGNUM *a_priv_key;
     DH_get0_key(a, &a_pub_key, &a_priv_key);
     printf("pub_key: %s\npriv_key: %s\n", BN_bn2hex(a_pub_key), BN_bn2hex(a_priv_key));
 }
+
+bool get_DH_key(DH *dh, )
 
 int main()
 {
@@ -121,16 +143,28 @@ int main()
     char key[16] = {'\0'};
     char iv[16] = {'\0'};
     RAND_bytes(key, 128 / 8);
-    print("key: ", key, sizeof(key));
+    print("key:\t", key, sizeof(key));
     RAND_bytes(iv, 128 / 8);
-    print("key: ", iv, sizeof(iv));
+    print("iv:\t", iv, sizeof(iv));
 
     EVP_PKEY_CTX *ctx;
     size_t key_len;
     EVP_PKEY *shared_key;
     DH *a = DH_new();
+    const BIGNUM *a_pub_key;
+    const BIGNUM *a_priv_key;
     int keyLen = 64;
     int code = 0;
     DH_generate_parameters_ex(a, keyLen, DH_GENERATOR_5, NULL);
-    create_DH_key(a, key_len, code);
+    DH_first_set(a, key_len, code);
+    
+    create_DH_key(a, a_pub_key, a_priv_key);
+
+    DH *b = DH_new();
+    const BIGNUM *b_pub_key;
+    const BIGNUM *b_priv_key;
+    create_DH_key(b, b_pub_key, b_priv_key);
+
+
+
 }
