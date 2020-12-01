@@ -43,7 +43,7 @@ void encrypt(char *out, const char *in, const uint8_t *key, const uint8_t *iv, i
     EVP_CIPHER_CTX_free(ctx);
 }
 
-void decrypt(char *out, const char *in, const uint8_t *key, const uint8_t *iv, int size)
+void decrypt(unsigned char *out, const unsigned char *in, const uint8_t *key, const uint8_t *iv, int size)
 {
     int out_len, in_len = size;
     EVP_CIPHER_CTX *ctx;
@@ -119,52 +119,51 @@ bool DH_first_set(DH *a, int keyLen, int code)
         puts("DH_key is not safe");
         exit(1);
     }
-}
-
-void create_DH_key(DH *a, BIGNUM *pub_key, BIGNUM *priv_key)
-{
-
     printf("\n");
     DHparams_print_fp(stdout, a);
     printf("\n");
-
-    DH_generate_key(a);
-
-    DH_get0_key(a, &a_pub_key, &a_priv_key);
-    printf("pub_key: %s\npriv_key: %s\n", BN_bn2hex(a_pub_key), BN_bn2hex(a_priv_key));
+    return true;
 }
 
-bool get_DH_key(DH *dh, )
+void create_DH_key(DH *a, const BIGNUM *pub_key, const BIGNUM *priv_key)
+{
+
+    DH_generate_key(a);
+    DH_get0_key(a, &pub_key, &priv_key);
+    printf("pub_key: %s\npriv_key: %s\n", BN_bn2hex(pub_key), BN_bn2hex(priv_key));
+}
+
+// bool get_DH_key(DH *dh, )
 
 int main()
 {
     time_t tm;
     time(&tm);
-    char key[16] = {'\0'};
-    char iv[16] = {'\0'};
+    unsigned char key[16] = {'\0'};
+    unsigned char iv[16] = {'\0'};
     RAND_bytes(key, 128 / 8);
     print("key:\t", key, sizeof(key));
     RAND_bytes(iv, 128 / 8);
     print("iv:\t", iv, sizeof(iv));
 
-    EVP_PKEY_CTX *ctx;
-    size_t key_len;
-    EVP_PKEY *shared_key;
     DH *a = DH_new();
-    const BIGNUM *a_pub_key;
-    const BIGNUM *a_priv_key;
+    const BIGNUM *a_pub_key = NULL;
+    const BIGNUM *a_priv_key = NULL;
     int keyLen = 64;
     int code = 0;
     DH_generate_parameters_ex(a, keyLen, DH_GENERATOR_5, NULL);
-    DH_first_set(a, key_len, code);
-    
+    DH_first_set(a, keyLen, code);
+
+    puts("A");
     create_DH_key(a, a_pub_key, a_priv_key);
 
+    puts("B");
     DH *b = DH_new();
-    const BIGNUM *b_pub_key;
-    const BIGNUM *b_priv_key;
+    DH_generate_parameters_ex(b, keyLen, DH_GENERATOR_5, NULL);
+    DH_first_set(b, keyLen, code);
+    const BIGNUM *b_pub_key = NULL;
+    const BIGNUM *b_priv_key = NULL;
     create_DH_key(b, b_pub_key, b_priv_key);
 
-
-
+    return 0;
 }
