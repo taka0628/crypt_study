@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String CHARACTERISTIC_CONFIG_UUID = "00002902-0000-1000-8000-00805f9b34fb";
 
     // ペリフェラルと接続しない: 0, ペリフェラルと接続する: 1
-    private int flag_connect = 0;
+    private int flag_connect = 1;
 
     // グラフ表示用の変数
     private int num;
@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
         colors[1] = Color.rgb(0x00, 0xFF, 0x00); // 緑
         //       colors[2] = Color.rgb(0x00, 0x00, 0xFF); // 青
 
-        max = 0;
+        max = 1000;
         min = -100;
 
         // グラフViewを初期化する
