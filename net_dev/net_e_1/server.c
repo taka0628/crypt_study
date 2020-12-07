@@ -30,12 +30,12 @@ typedef struct
 typedef struct
 {
     pthread_t th;       //スレッドID
-    pthread_mutex_t mp; //排他アクセス
-    pthread_cond_t sig; //シグナル
+    // pthread_mutex_t mp; //排他アクセス
+    // pthread_cond_t sig; //シグナル
     int sock;           //通信するソケットID
     int th_idx;         //スレッド番号
-    bool is_wait;       //スレッドを待機するか？
-    bool is_use;        //スレッドが使用中か？
+    // bool is_wait;       //スレッドを待機するか？
+    // bool is_use;        //スレッドが使用中か？
 } thread_contents_t;
 
 // メモリの動的確保をする際に確保したサイズも保存する
@@ -140,9 +140,8 @@ void *thread_process(void *argument)
     int sock = 0;
     int sock0 = 0;
     struct sockaddr_in client;
-    int len = sizeof(client);
+    socklen_t len = sizeof(client);
     char recieve_message[1024];
-    char *temp;
     array_t path, send_data;
     int fd = 0;
     int n = 0;
@@ -153,6 +152,7 @@ void *thread_process(void *argument)
     {
         sock0 = data->sock;
         sock = accept(sock0, (struct sockaddr *)&client, &len);
+        printf("thread[%i] active\n", data->th_idx);
         if (sock < 0)
         {
             ERROR;
@@ -229,6 +229,7 @@ void *thread_process(void *argument)
         free(send_data.array);
         free(path.array);
         close(sock);
+        printf("\tthread[%i] sleep\n", data->th_idx);
     }
 
     pthread_detach(pthread_self());
@@ -239,8 +240,7 @@ int main()
 {
     int sock0;
     struct sockaddr_in addr;
-    socklen_t len;
-    int sock;
+    int sock = 0;
     int port_num = PORT_NUM;
 
     /* ソケットの作成 */
@@ -291,13 +291,12 @@ int main()
         close(sock0);
         return 1;
     }
-    pthread_t th;
     thread_contents_t *contents = (thread_contents_t *)malloc(sizeof(thread_contents_t) * THREAD_SIZE);
     for (int i = 0; i < THREAD_SIZE; i++)
     {
-        pthread_mutex_init(&contents[i].mp, NULL);
-        contents[i].is_wait = true; //trueにしている限りスレッドはスリープする
-        contents[i].is_use = false;
+        // pthread_mutex_init(&contents[i].mp, NULL);
+        // contents[i].is_wait = true; //trueにしている限りスレッドはスリープする
+        // contents[i].is_use = false;
         contents[i].th_idx = i;
         contents[i].sock = sock0;
     }

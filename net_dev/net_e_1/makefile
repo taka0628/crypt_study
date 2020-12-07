@@ -10,5 +10,9 @@ all:
 
 $(TARGET_1): $(SORCE_1)
 	$(CC) $(CFLAGS) $< -o $@
+	
+wall:
+	$(CC) $(CFLAGS) -Wall $(SORCE_1) -o $(TARGET_1)
+
 clean:
 	$(RM) -rf $(TARGET_1)
