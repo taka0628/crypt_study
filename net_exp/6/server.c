@@ -41,7 +41,7 @@ bool send_data(int sock, char *send_data, int size)
 	return true;
 }
 
-bool recieve_data(int sock, char *rcv_data, int size)
+bool receive_data(int sock, char *rcv_data, int size)
 {
 	if (read(sock, rcv_data, size) < 0)
 	{
@@ -53,14 +53,14 @@ bool recieve_data(int sock, char *rcv_data, int size)
 }
 
 // 文字列が一致するか？
-bool string_check(char *sorce, char *key)
+bool string_check(char *source, char *key)
 {
 	int len = strlen(key);
-	if (strchr(sorce, '\n') != NULL)
+	if (strchr(source, '\n') != NULL)
 	{
 		len++;
 	}
-	if (strlen(sorce) == len && strstr(sorce, key) != NULL)
+	if (strlen(source) == len && strstr(source, key) != NULL)
 	{
 		return true;
 	}
@@ -85,23 +85,23 @@ void create_makefile(char *dir_path, DIR *dir)
 		return;
 	}
 
-	int sorce_cnt = 0;
-	char sorce_name[10][1024] = {'\0'};
+	int source_cnt = 0;
+	char source_name[10][1024] = {'\0'};
 	// TARGET
-	while ((dis_file = readdir(dir)) != NULL && sorce_cnt < 10)
+	while ((dis_file = readdir(dir)) != NULL && source_cnt < 10)
 	{
 		if (strstr(dis_file->d_name, ".c") != NULL)
 		{
-			strncpy(sorce_name[sorce_cnt], dis_file->d_name, sizeof(sorce_name[0]));
-			sorce_cnt++;
+			strncpy(source_name[source_cnt], dis_file->d_name, sizeof(source_name[0]));
+			source_cnt++;
 		}
 	}
 
 	char *p = NULL;
-	for (int i = 0; i < sorce_cnt; i++)
+	for (int i = 0; i < source_cnt; i++)
 	{
 		memset(temp, 0, sizeof(temp));
-		strncpy(temp, sorce_name[i], sizeof(temp));
+		strncpy(temp, source_name[i], sizeof(temp));
 		if ((p = strstr(temp, ".c")) != NULL)
 		{
 			*p = *(p + 1) = '\0';
@@ -109,23 +109,23 @@ void create_makefile(char *dir_path, DIR *dir)
 		}
 		fprintf(fp, "TARGET_%d := %s\n", i, temp);
 	}
-	for (int i = 0; i < sorce_cnt; i++)
+	for (int i = 0; i < source_cnt; i++)
 	{
-		fprintf(fp, "SORCE_%d := %s\n", i, sorce_name[i]);
+		fprintf(fp, "SOURCE_%d := %s\n", i, source_name[i]);
 	}
 
 	fprintf(fp, "CC := gcc\nCFLAGS :=\nRM := /bin/rm\n\nall:\n");
-	for (int i = 0; i < sorce_cnt; i++)
+	for (int i = 0; i < source_cnt; i++)
 	{
-		fprintf(fp, "\t$(CC) $(CFLAGS) $(SORCE_%d) -o $(TARGET_%d)\n", i, i);
+		fprintf(fp, "\t$(CC) $(CFLAGS) $(SOURCE_%d) -o $(TARGET_%d)\n", i, i);
 	}
 	fprintf(fp, "\n");
-	for (int i = 0; i < sorce_cnt; i++)
+	for (int i = 0; i < source_cnt; i++)
 	{
-		fprintf(fp, "$(TARGET_%d): $(SORCE_%d)\n\t$(CC) $(CFLAGS) $< -o $@\n\n", i, i);
+		fprintf(fp, "$(TARGET_%d): $(SOURCE_%d)\n\t$(CC) $(CFLAGS) $< -o $@\n\n", i, i);
 	}
 	fprintf(fp, "clean:\n");
-	for (int i = 0; i < sorce_cnt; i++)
+	for (int i = 0; i < source_cnt; i++)
 	{
 		fprintf(fp, "\t$(RM) -rf $(TARGET_%d)\n", i);
 	}
@@ -204,7 +204,7 @@ void print(char *header, uint8_t *buf, int size)
 	printf("\n");
 }
 
-#define CHIPHER_DUBAG 1
+#define CHIPHER_DEBUG 1
 bool chipher_send(char *data, int size, int sock)
 {
 	static uint8_t key[16] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
@@ -212,7 +212,7 @@ bool chipher_send(char *data, int size, int sock)
 	char buf[BUF_SIZE] = {'\0'};
 
 	encrypt(buf, data, key, iv, size);
-	if (CHIPHER_DUBAG && size < 100)
+	if (CHIPHER_DEBUG && size < 100)
 	{
 		puts("\n[send]");
 		printf("data_size: %d\n", size);
@@ -228,7 +228,7 @@ bool chipher_send(char *data, int size, int sock)
 	return true;
 }
 
-int chipher_recieve(char *data, int size, int sock)
+int chipher_receive(char *data, int size, int sock)
 {
 	static uint8_t key[16] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
 	static uint8_t iv[16] = {0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
@@ -242,9 +242,9 @@ int chipher_recieve(char *data, int size, int sock)
 		return -1;
 	}
 	decrypt(data, buf, key, iv, data_size);
-	if (CHIPHER_DUBAG && data_size < 100)
+	if (CHIPHER_DEBUG && data_size < 100)
 	{
-		puts("\n[recieve]");
+		puts("\n[receive]");
 		printf("data_size: %d\n", data_size);
 		print("data: ", buf, data_size);
 		printf("dec: %s\n", data);
@@ -295,7 +295,7 @@ int main()
 	if (listen_error < 0)
 	{
 		ERROR;
-		perror("listn");
+		perror("listen");
 		printf("%d\n", errno);
 		socket_close(sock, sock0);
 		return 1;
@@ -319,7 +319,7 @@ int main()
 	memset(buf, 0, sizeof(buf));
 
 	// 保存ディレクトリのパスを受信
-	if (chipher_recieve(buf, sizeof(buf), sock) < 0)
+	if (chipher_receive(buf, sizeof(buf), sock) < 0)
 	{
 		socket_close(sock, sock0);
 		return 1;
@@ -331,7 +331,7 @@ int main()
 	{
 		printf("ディレクトリを作成しました　%s\n", buf);
 		// send_data(sock, "sucseeded", 9);
-		chipher_send("sucseeded", 9, sock);
+		chipher_send("succeeded", 9, sock);
 		memcpy(dir_path, buf, sizeof(dir_path));
 		memset(buf, 0, sizeof(buf));
 	}
@@ -353,7 +353,7 @@ int main()
 		memset(file_path, 0, sizeof(file_path));
 		memset(buf, 0, sizeof(buf));
 		// ファイル名受信
-		if (chipher_recieve(buf, sizeof(buf), sock) < 0)
+		if (chipher_receive(buf, sizeof(buf), sock) < 0)
 		{
 			socket_close(sock, sock0);
 			return 1;
@@ -379,7 +379,7 @@ int main()
 
 		memset(buf, 0, sizeof(buf));
 		int n = 0;
-		while ((n = chipher_recieve(buf, sizeof(buf), sock)) > 0)
+		while ((n = chipher_receive(buf, sizeof(buf), sock)) > 0)
 		{
 			if (string_check(buf, FILE_END_KEY) == false)
 			{

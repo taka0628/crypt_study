@@ -23,9 +23,9 @@
 #define END_KEY "end"
 #define BUF_SIZE 2048
 
-#define __ADRESS
-#ifdef __ADRESS
-void get_adress(char *hostname)
+#define __ADDRESS
+#ifdef __ADDRESS
+void get_address(char *hostname)
 {
     struct addrinfo hints, *res;
     struct in_addr addr;
@@ -65,14 +65,14 @@ void input_reception(char *result, int size)
 }
 
 // 文字列が一致するか？
-bool string_check(char *sorce, char *key)
+bool string_check(char *source, char *key)
 {
     int len = strlen(key);
-    if (strchr(sorce, '\n') != NULL)
+    if (strchr(source, '\n') != NULL)
     {
         len++;
     }
-    if (strlen(sorce) == len && strstr(sorce, key) != NULL)
+    if (strlen(source) == len && strstr(source, key) != NULL)
     {
         return true;
     }
@@ -175,7 +175,7 @@ void print(char *header, uint8_t *buf, int size)
     printf("\n");
 }
 
-#define CHIPHER_DUBAG 1
+#define CHIPHER_DEBUG 1
 
 bool chipher_send(char *data, int size, int sock)
 {
@@ -184,7 +184,7 @@ bool chipher_send(char *data, int size, int sock)
     char buf[BUF_SIZE] = {'\0'};
 
     encrypt(buf, data, key, iv, size);
-    if (CHIPHER_DUBAG && size < 100)
+    if (CHIPHER_DEBUG && size < 100)
     {
         puts("\n[send]");
         printf("data_size: %d\n", size);
@@ -200,7 +200,7 @@ bool chipher_send(char *data, int size, int sock)
     return true;
 }
 
-bool chipher_recieve(char *data, int size, int sock)
+bool chipher_receive(char *data, int size, int sock)
 {
     static uint8_t key[16] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
     static uint8_t iv[16] = {0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
@@ -214,9 +214,9 @@ bool chipher_recieve(char *data, int size, int sock)
         return false;
     }
     decrypt(data, buf, key, iv, data_size);
-    if (CHIPHER_DUBAG && data_size < 100)
+    if (CHIPHER_DEBUG && data_size < 100)
     {
-        puts("\n[recieve]");
+        puts("\n[receive]");
         printf("data_size: %d\n", data_size);
         print("data: ", buf, data_size);
         printf("dec: %s\n", data);
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
     char buf[BUF_SIZE];
     int n;
     char hostname[32];
-    char adress[32];
+    char address[32];
     int port_num = PORT_NUM;
 
     puts("main st");
@@ -261,18 +261,18 @@ int main(int argc, char *argv[])
         printf("ip address : %s\n", buf);
 
         freeaddrinfo(res);
-        strcpy(adress, buf);
-        printf("adress: %s\n", adress);
+        strcpy(address, buf);
+        printf("address: %s\n", address);
     }
     else
     {
-        puts("./hoge hostname sroce_path save_path");
+        puts("./hoge hostname source_path save_path");
         return (1);
     }
-    puts("adress comp");
+    puts("address comp");
 
-    DIR *sorce_dir = opendir(argv[2]);
-    if (sorce_dir == NULL)
+    DIR *source_dir = opendir(argv[2]);
+    if (source_dir == NULL)
     {
         ERROR;
         return 1;
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
     server.sin_port = htons(port_num);
 
     /* 127.0.0.1はlocalhost */
-    inet_pton(AF_INET, adress, &server.sin_addr.s_addr);
+    inet_pton(AF_INET, address, &server.sin_addr.s_addr);
 
     /* サーバに接続 */
     int connect_error = connect(sock, (struct sockaddr *)&server, sizeof(server));
@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
 
     memset(buf, 0, sizeof(buf));
     // ディレクトリ作成の結果を受信
-    chipher_recieve(buf, sizeof(buf), sock);
+    chipher_receive(buf, sizeof(buf), sock);
     printf("受信: %s\n", buf);
     if (string_check(buf, ERROR_KEY))
     {
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
     struct dirent *dis_file;
     char file_path[1024] = {'\0'};
     int fd = 0;
-    while ((dis_file = readdir(sorce_dir)) != NULL)
+    while ((dis_file = readdir(source_dir)) != NULL)
     {
         if (send_file_check(dis_file->d_name))
         {
