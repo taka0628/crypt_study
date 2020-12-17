@@ -59,11 +59,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // グラフに表示するデータに関連する値を初期化
+        // 今回は照度のみを測定するのでデータの種類は一つ
         num = 1;
+        // 各配列のメモリ確保を行う
         values = new float[num];
         labels = new String[num];
         colors = new int[num];
-
+        //プロットするデータのラベルを設定
         labels[0] = "照度";
 //        labels[1] = "加速度 Y軸";
 //        labels[2] = "加速度 Z軸";
@@ -71,8 +73,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         colors[0] = Color.rgb(0xFF, 0x00, 0x00); // 赤
 //        colors[1] = Color.rgb(0x00, 0xFF, 0x00); // 緑
 //        colors[2] = Color.rgb(0x00, 0x00, 0xFF); // 青
-
+        // 表示するグラフの最大値を設定
         max = 3000;
+        // 表示するグラフの最小値を設定
+        // 照度は負にならないので0を設定した。
         min = 0;
 
         // グラフViewを初期化する
