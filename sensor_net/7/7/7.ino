@@ -8,10 +8,10 @@ BLECharacteristic writeCharacteristic("19B10011-E8F2-537E-4F6C-D104768A1214", BL
 BLECharacteristic notifyCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1214", BLERead | BLENotify, 2);
 
 //送受信関連
-int send_value = 0; // セントラルへ送信する数値を格納する変数
-int recv_value = 0;
+int send_value = 0;        // セントラルへ送信する数値を格納する変数
+int recv_value = 0;        //セントラルから受信した値を格納する変数
 byte *value = new byte[2]; // データ送受信用の配列の編集
-int DATA_SIZE_MAX = 65535; //16bit
+int DATA_SIZE_MAX = 65535; //送信可能なデータの最大値、16bit
 
 //センサ変数
 const int pinrotary = A0; //センサポート
@@ -64,6 +64,7 @@ void loop()
   }
   else if (send_value < 0)
   {
+    // 送信不可のデータであればゼロクリアを行う。
     send_value = 0;
   }
 
@@ -80,6 +81,7 @@ void loop()
   /** セントラルから受信した値に対する処理 **/
   Serial.print("Received: ");
   Serial.println(recv_value);
+  // LEDへ受信した値を送り、発光させる。
   analogWrite(3, recv_value);
   /*************************************/
 

@@ -63,11 +63,11 @@ public class MainActivity extends AppCompatActivity {
     private int flag_connect = 1;
 
     // グラフ表示用の変数
-    private int num;
-    private float[] values;
+    private int num; // グラフにプロットするデータの数
+    private float[] values;// データのラベルを格納する配列
     private String[] labels; // データのラベルを格納する配列
     private int[] colors; // グラフにプロットする点の色を格納する配列
-    private float max, min;
+    private float max, min;// グラフのY 軸の最大値と最小値
 
     // 値をプロットするx座標
     private float count = 0;
@@ -79,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothGatt mBleGatt;
     private BluetoothGattCharacteristic notifyCharacteristic, writeCharacteristic;
 
+// *************************************************************************
+    // 各変数の初期化とメモリの確保、アプリケーション全体の処理を管理する。
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,11 +90,13 @@ public class MainActivity extends AppCompatActivity {
         // アプリ実行中はスリープしない
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // 変数の初期化
         num = 2;
+        // メモリ確保
         values = new float[num];
         labels = new String[num];
         colors = new int[num];
-
+        // 配列の初期化を行う。
         for(int i=0; i<num; i++){
             values[i] = 0;
         }
@@ -105,7 +110,9 @@ public class MainActivity extends AppCompatActivity {
         colors[1] = Color.rgb(0x00, 0xFF, 0x00); // 緑
         //       colors[2] = Color.rgb(0x00, 0x00, 0xFF); // 青
 
+        // 受信する照度の最大値が1023なのでグラフの最大値は1100に設定。
         max = 1100;
+        // 電波強度を表示するために最小値に-100を設定
         min = -100;
 
         // グラフViewを初期化する
@@ -152,17 +159,22 @@ public class MainActivity extends AppCompatActivity {
             mBleScanner.startScan(scanCallback);
         }
     }
+
+    // *****************************************************
+    // データ処理部
     //    ペリフェラルへ送り返す値を返り値とする
     private int DecideControlParameter(int input){
         int output;
+        // Arduinoが出力可能な電圧の最大値は255なので変数として設定。
         int OUTPUT_MAX = 255;
 
-//        1023までの自然数で取得したinputを出力可能な数値に圧縮。
-//        照度センサのデータに反比例するoutputを計算
+        //1023までの自然数で取得したinputを出力可能な数値に圧縮。
+        //照度センサのデータに反比例するoutputを計算
         output = OUTPUT_MAX - (input / 4);
-//        output = (input / 4);
         return output;
     }
+
+    // ******************************************************
 
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
         @Override
