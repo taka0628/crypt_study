@@ -216,7 +216,8 @@ bool chipher_send(char *data, int size, int sock)
 	{
 		puts("\n[send]");
 		printf("data_size: %d\n", size);
-		printf("data: %s\n", data);
+		printf("data_chr: %s\n", data);
+        print("data_0x: ", data, size);
 		print("enc: ", buf, size);
 	}
 	if (write(sock, buf, size) < 0)
