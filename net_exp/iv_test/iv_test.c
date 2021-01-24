@@ -11,8 +11,8 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/err.h>
 #include <openssl/dh.h>
-#include <openssl/engine.h>
 
 #define ERROR(comment)                                                \
     printf("[ERROR]\n\t%s: %d\n\t%s\n", __func__, __LINE__, comment); \
@@ -23,6 +23,12 @@ typedef struct
     char *data;
     unsigned int size;
 } dynamic_mem_t;
+
+typedef struct
+{
+    dynamic_mem_t data;
+    unsigned int str_len;
+} chipher_data_t;
 
 void encrypt(char *out, const char *in, const uint8_t *key, const uint8_t *iv, int size)
 {
@@ -185,14 +191,24 @@ void get_rsa_pubkey(EVP_PKEY *pkey, BIGNUM **pubn, BIGNUM **pube)
     printf("RSA KEY\npn: %s\npe %s\n", BN_bn2hex(*pubn), BN_bn2hex(*pube));
 }
 
-void enchiper_RSA(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, dynamic_mem_t *result)
+void enchiper_RSA(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, chipher_data_t *result)
 {
     printf("平文: %s\n", in.data);
 
-    RSA *rsa = RSA_new();
-    RSA_set0_key(rsa, pubn, pube, NULL);
-    EVP_PKEY_set1_RSA(pkey, rsa);
+    RSA *rsa_pubkey = RSA_new();
+    if (RSA_set0_key(rsa_pubkey, pubn, pube, NULL) <= 0)
+    {
+        ERROR("RSA_set0_key");
+    }
+    if (EVP_PKEY_set1_RSA(pkey, rsa_pubkey) <= 0)
+    {
+        ERROR("EVP_PKEY_set1_RSA");
+    }
+
+#define D_CTX
+#ifndef D_CTX
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    int error_num = 1;
     if (!ctx)
     {
         ERROR("EVP_PKEY_CTX_new");
@@ -206,31 +222,64 @@ void enchiper_RSA(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, 
         ERROR("EVP_PKEY_CTX_set_rsa_padding");
     }
     int out_len = 0;
-    if (EVP_PKEY_encrypt(ctx, NULL, (size_t *)&out_len, (unsigned char *)in.data, in.size) <= 0)
+    if (EVP_PKEY_encrypt(ctx, NULL, (size_t *)&out_len, (const unsigned char *)in.data, in.size) <= 0)
     {
         ERROR("first EVP_PKEY_encrypt");
     }
     printf("outlen: %d\n", out_len);
-    unsigned char *out = malloc(out_len);
-    if(!out){
+    unsigned char *out = (unsigned char *)malloc(sizeof(unsigned char) * out_len);
+    if (!out)
+    {
         ERROR("out");
     }
-    // if (EVP_PKEY_encrypt(ctx, out, &out_len, (const unsigned char *)in.data, in.size) <= 0)
-    // {
-    //     ERROR("EVP_PKEY_encrypt out");
-    // }
-    RSA_public_encrypt(RSA_size(rsa), (const unsigned char *)in.data, out, rsa, RSA_PKCS1_PADDING);
+    if ((error_num = EVP_PKEY_encrypt(ctx, out, (size_t *)&out_len, (const unsigned char *)in.data, in.size)) <= 0)
+    {
+        if (error_num = -2)
+        {
+            ERROR("EVP_PKEY_encrypt\n操作がサポートされていません");
+        }
+        ERROR("EVP_PKEY_encrypt out");
+    }
     print("暗号化されたデータ: ", out, out_len);
     result->size = (unsigned int)out_len;
     puts("malloc");
     printf("size: %d\n", result->size);
     puts("cpy");
     strncpy(result->data, out, result->size);
-    RSA_free(rsa);
+    RSA_free(rsa_pubkey);
     EVP_PKEY_free(pkey);
     free(out);
     puts("return");
     return;
+
+#else
+
+    dynamic_mem_t out;
+    out.size = in.size;
+    out.data = (char *)malloc(out.size);
+    memset(out.data, 0, out.size);
+    int outlen = RSA_public_encrypt(in.size, (const unsigned char *)in.data, out.data, rsa_pubkey, RSA_PKCS1_PADDING);
+    if (outlen <= 0)
+    {
+        int error = ERR_get_error();
+        char *str_error = malloc(256);
+        str_error = ERR_reason_error_string(error);
+        printf("%s\n", str_error);
+        ERROR("RSA_public_encrypt");
+    }
+
+    print("暗号化されたデータ: ", out.data, outlen);
+    printf("outlen: %d\n", outlen);
+    puts("data cpy");
+    if (outlen <= result->data.size)
+    {
+        memcpy(result->data.data, out.data, outlen);
+        result->str_len = outlen;
+    }
+    RSA_free(rsa_pubkey);
+    EVP_PKEY_free(pkey);
+
+#endif
 }
 
 // bool get_DH_key(DH *dh, )
@@ -263,15 +312,15 @@ int main()
     printf("鍵確認\npn: %s\npe: %s\n", BN_bn2hex(pubn), BN_bn2hex(pube));
 
     dynamic_mem_t in;
-    in.size = 1024;
+    in.size = sizeof("RSAテスト");
     in.data = malloc(in.size);
-    dynamic_mem_t out;
-    out.data = (char *)malloc(1024);
+    chipher_data_t out;
+    out.data.data = (char *)malloc(2048);
+    memset(out.data.data, 0, out.data.size);
     strncpy(in.data, "RSAテスト", in.size);
     EVP_PKEY *inpkey = EVP_PKEY_new();
     enchiper_RSA(inpkey, pubn, pube, in, &out);
-
-    print("main 受け取り: ", out.data, out.size);
+    print("main 受け取り: ", out.data.data, out.str_len);
 
     return 0;
 }
