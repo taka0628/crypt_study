@@ -1,7 +1,7 @@
 TARGET_1 := iv_test
 SORCE_1 := iv_test.c
 CC	:= gcc
-CFLAGS	:= -Wall -O
+CFLAGS	:= -Wall
 LIBS=-lssl -lcrypto -I.
 RM	:= /bin/rm
 
