@@ -8,15 +8,22 @@
 
 #include <openssl/evp.h>
 #include <openssl/aes.h>
+#include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/dh.h>
 
 #define ERROR(comment)                                                \
     printf("[ERROR]\n\t%s: %d\n\t%s\n", __func__, __LINE__, comment); \
     exit(0);
+
+#define PUBLIC_KEY_PEM 1
+#define PRIVATE_KEY_PEM 0
+#define PRIVATE_KEY_FILE "private_key"
+#define PUBLIC_KEY_FILE "public_key"
 
 typedef struct
 {
@@ -149,8 +156,40 @@ void create_DH_key(DH *a, const BIGNUM *pub_key, const BIGNUM *priv_key)
     printf("pub_key: %s\npriv_key: %s\n", BN_bn2hex(pub_key), BN_bn2hex(priv_key));
 }
 
+RSA *create_RSA(RSA *keypair, int pem_type, char *file_name)
+{
+
+    RSA *rsa = NULL;
+    FILE *fp = NULL;
+
+    if (pem_type == PUBLIC_KEY_PEM)
+    {
+
+        fp = fopen(file_name, "w");
+        PEM_write_RSAPublicKey(fp, keypair);
+        fclose(fp);
+
+        fp = fopen(file_name, "rb");
+        PEM_read_RSAPublicKey(fp, &rsa, NULL, NULL);
+        fclose(fp);
+    }
+    else if (pem_type == PRIVATE_KEY_PEM)
+    {
+
+        fp = fopen(file_name, "w");
+        PEM_write_RSAPrivateKey(fp, keypair, NULL, NULL, NULL, NULL, NULL);
+        fclose(fp);
+
+        fp = fopen(file_name, "rb");
+        PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL);
+        fclose(fp);
+    }
+
+    return rsa;
+}
+
 // RSA暗号の鍵を生成
-bool rsa_key_set(const unsigned int key_size, EVP_PKEY *pkey)
+bool rsa_key_create(const unsigned int key_size, RSA *priv_key, RSA *pub_key)
 {
     printf("RSA-%dで鍵を生成します\n", key_size);
     int rc = 1;
@@ -172,12 +211,21 @@ bool rsa_key_set(const unsigned int key_size, EVP_PKEY *pkey)
         return false;
     }
     //  鍵生成
+    EVP_PKEY *pkey = EVP_PKEY_new();
     if ((rc = EVP_PKEY_keygen(ctx, &pkey)) <= 0)
     {
         ERROR("key_gen");
         return false;
     }
     EVP_PKEY_CTX_free(ctx);
+
+    RSA *keypair = RSA_new();
+    keypair = EVP_PKEY_get0_RSA(pkey);
+    EVP_PKEY_free(pkey);
+
+    priv_key = create_RSA(keypair, PRIVATE_KEY_PEM, PRIVATE_KEY_FILE);
+    pub_key = create_RSA(keypair, PUBLIC_KEY_PEM, PUBLIC_KEY_FILE);
+    RSA_free(keypair);
 
     return true;
 }
@@ -193,6 +241,14 @@ char *dynamic_new(dynamic_mem_t *data, size_t size)
         printf("malloc size: %ld\n", size);
         ERROR("malloc");
     }
+    return data->data;
+}
+
+char *dynamic_free(dynamic_mem_t *data)
+{
+    data->size = 0;
+    free(data->data);
+    data->data = NULL;
     return data->data;
 }
 
@@ -215,9 +271,90 @@ void get_rsa_key(EVP_PKEY *pkey, BIGNUM **pubn, BIGNUM **pube, BIGNUM **privk)
     {
         ERROR("不正な鍵の引数");
     }
+    RSA_free(rsa);
 }
 
-void RSA_encrypt(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, chipher_data_t *result)
+
+
+void RSA_encrypt_evp(BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, chipher_data_t *result)
+{
+    printf("平文: %s\n", in.data);
+
+    // 鍵をpkeyへ設定
+    EVP_PKEY_CTX *ctx;
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    RSA *rsa_pubk = RSA_new();
+    if (RSA_set0_key(rsa_pubk, pubn, pube, NULL) <= 0)
+    {
+        EVP_PKEY_free(pkey);
+        RSA_free(rsa_pubk);
+        ERROR("RSA_set0_key");
+    }
+    if (EVP_PKEY_set1_RSA(pkey, rsa_pubk) <= 0)
+    {
+        EVP_PKEY_free(pkey);
+        RSA_free(rsa_pubk);
+        ERROR("EVP_PKEY_set1_RSA");
+    }
+    RSA_free(rsa_pubk);
+
+    // アルゴリズムの設定
+    ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    EVP_PKEY_free(pkey);
+    if (!ctx)
+    {
+        ERROR("EVP_PKEY_CTX_new");
+    }
+    if (EVP_PKEY_encrypt_init(ctx) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_encrypt_init");
+    }
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_CTX_set_rsa_padding");
+    }
+
+    // 暗号化に必要な出力サイズを取得
+    size_t outlen = 0;
+    if (EVP_PKEY_encrypt(ctx, NULL, &outlen, in.data, in.size) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_encrypt, get outlen");
+    }
+    unsigned char *out = OPENSSL_malloc(outlen);
+    if (!out)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("OPENSSL_malloc");
+    }
+
+    // 暗号化
+    if (EVP_PKEY_encrypt(ctx, out, &outlen, in.data, in.size) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        OPENSSL_free("out");
+        ERROR("EVP_PKEY_encrypt");
+    }
+    print("暗号化されたデータ: ", out, outlen);
+    if (result->data.size >= outlen)
+    {
+        memcpy(result->data.data, out, outlen);
+        result->str_len = outlen;
+    }
+    else
+    {
+        EVP_PKEY_CTX_free(ctx);
+        OPENSSL_free(out);
+        ERROR("memcpy");
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    OPENSSL_free(out);
+}
+
+void RSA_encrypt(BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, chipher_data_t *result)
 {
     printf("平文: %s\n", in.data);
 
@@ -226,16 +363,16 @@ void RSA_encrypt(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, c
     {
         ERROR("RSA_set0_key");
     }
-    if (EVP_PKEY_set1_RSA(pkey, rsa_pubkey) <= 0)
-    {
-        ERROR("EVP_PKEY_set1_RSA");
-    }
+    // if (EVP_PKEY_set1_RSA(pkey, rsa_pubkey) <= 0)
+    // {
+    //     ERROR("EVP_PKEY_set1_RSA");
+    // }
 
     dynamic_mem_t out;
     out.size = in.size;
     out.data = (char *)malloc(out.size);
     memset(out.data, 0, out.size);
-    int outlen = RSA_public_encrypt(in.size, (const unsigned char *)in.data, (unsigned char *)out.data, rsa_pubkey, RSA_PKCS1_PADDING);
+    int outlen = RSA_public_encrypt((int)in.size, (const unsigned char *)in.data, (unsigned char *)out.data, rsa_pubkey, RSA_PKCS1_PADDING);
     if (outlen <= 0)
     {
         int error = ERR_get_error();
@@ -263,18 +400,115 @@ void RSA_encrypt(EVP_PKEY *pkey, BIGNUM *pubn, BIGNUM *pube, dynamic_mem_t in, c
     // EVP_PKEY_free(pkey);
 }
 
-void RSA_decrypt(BIGNUM *SKey, BIGNUM *pube, chipher_data_t in, chipher_data_t *out)
+void RSA_decrypt_evp(EVP_PKEY *pkey, chipher_data_t in, chipher_data_t *out)
 {
     print("暗号文: ", (uint8_t *)in.data.data, in.str_len);
 
-    RSA *rsa_key = RSA_new();
-    if (RSA_set0_key(rsa_key, NULL, pube, SKey) <= 0)
+    // 鍵をpkeyへ設定
+    BIGNUM *privk = BN_new();
+    get_rsa_key(pkey, NULL, NULL, &privk);
+    RSA *rsa_priv = RSA_new();
+    EVP_PKEY *priv_key = EVP_PKEY_new();
+    if (RSA_set0_key(rsa_priv, NULL, NULL, privk) <= 0)
     {
+        EVP_PKEY_free(priv_key);
+        RSA_free(rsa_priv);
         ERROR("RSA_set0_key");
     }
+    if (EVP_PKEY_set1_RSA(priv_key, rsa_priv) <= 0)
+    {
+        EVP_PKEY_free(priv_key);
+        RSA_free(rsa_priv);
+        ERROR("EVP_PKEY_set1_RSA");
+    }
+    RSA_free(rsa_priv);
+    BN_free(privk);
+
+    // アルゴリズムの設定
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(priv_key, NULL);
+    EVP_PKEY_free(priv_key);
+    if (!ctx)
+    {
+        ERROR("EVP_PKEY_CTX_new");
+    }
+    if (EVP_PKEY_decrypt_init(ctx) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_decrypt_init");
+    }
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_CTX_set_rsa_padding");
+    }
+
+    // 復号に必要な出力サイズを取得
+    size_t outlen = 0;
+    int error = 0;
+    if ((error = EVP_PKEY_decrypt(ctx, NULL, &outlen, (const unsigned char *)in.data.data, (size_t)in.str_len)) <= 0)
+    {
+        if (error == -2)
+        {
+            EVP_PKEY_CTX_free(ctx);
+            ERROR("操作が公開鍵アルゴリズムでサポートされていません");
+        }
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("EVP_PKEY_decrypt, get outlen");
+    }
+    unsigned char *out_buf = OPENSSL_malloc(outlen);
+    if (!out_buf)
+    {
+        EVP_PKEY_CTX_free(ctx);
+        ERROR("OPENSSL_malloc");
+    }
+
+    // 復号
+    if ((error = EVP_PKEY_decrypt(ctx, out_buf, &outlen, in.data.data, in.str_len)) <= 0)
+    {
+        if (error == -2)
+        {
+            EVP_PKEY_CTX_free(ctx);
+            OPENSSL_free("out");
+            ERROR("操作が公開鍵アルゴリズムでサポートされていません");
+        }
+        EVP_PKEY_CTX_free(ctx);
+        OPENSSL_free("out");
+        ERROR("EVP_PKEY_decrypt");
+    }
+    print("暗号化されたデータ: ", out, outlen);
+    if (out->data.size >= outlen)
+    {
+        memcpy(out->data.data, out_buf, outlen);
+        out->str_len = outlen;
+    }
+    else
+    {
+        EVP_PKEY_CTX_free(ctx);
+        OPENSSL_free(out);
+        ERROR("memcpy");
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    OPENSSL_free(out);
+}
+
+void RSA_decrypt(EVP_PKEY *pkey, chipher_data_t in, chipher_data_t *out)
+{
+    print("暗号文: ", (uint8_t *)in.data.data, in.str_len);
+
+    // 鍵設定
+    RSA *priv_key = RSA_new();
+    priv_key = EVP_PKEY_get0_RSA(pkey);
+    BIGNUM *priv_temp = BN_new();
+    RSA_get0_key(priv_key, NULL, NULL, priv_temp);
+    RSA_free(priv_key);
+    priv_key = RSA_new();
+    RSA_set0_key(priv_key, NULL, NULL, priv_temp);
+    BN_free(priv_temp);
+
     chipher_data_t temp;
     temp.data.data = dynamic_new(&temp.data, in.str_len);
-    temp.str_len = RSA_private_decrypt(in.str_len, (const unsigned char *)in.data.data, (unsigned char *)temp.data.data, rsa_key, RSA_PKCS1_PADDING);
+    temp.str_len = RSA_private_decrypt(in.str_len, (const unsigned char *)in.data.data, (unsigned char *)temp.data.data, priv_key, RSA_PKCS1_PADDING);
     if (temp.str_len <= 0)
     {
         int error = ERR_get_error();
@@ -282,7 +516,7 @@ void RSA_decrypt(BIGNUM *SKey, BIGNUM *pube, chipher_data_t in, chipher_data_t *
         str_error = (char *)ERR_reason_error_string(error);
         printf("%s\n", str_error);
         free(str_error);
-        RSA_free(rsa_key);
+        RSA_free(priv_key);
         ERROR("RSA_private_decrypt");
     }
 
@@ -294,8 +528,10 @@ void RSA_decrypt(BIGNUM *SKey, BIGNUM *pube, chipher_data_t in, chipher_data_t *
     }
     else
     {
+        RSA_free(priv_key);
         ERROR("lengs error");
     }
+    RSA_free(priv_key);
 }
 // bool get_DH_key(DH *dh, )
 
@@ -310,38 +546,48 @@ int main()
     RAND_bytes(iv, 128 / 8);
     print("iv:\t", iv, sizeof(iv));
 
-    // RSA_generate_key_ex(rsa, 2048, bn, NULL);
-    // // RSA_get0_key(rsa, NULL, &pubkey, &privkey);
-    // EVP_PKEY_assign_RSA(p_key, rsa);
-    // unsigned char str_pubkey[4096];
-    // unsigned char str_privbkey[4096];
-    // RSA_get0_key(rsa, &pubkey, )
-    // // printf("pkey: %x, okey: %x\n", BN_bn2hex(p_key), BN_bn2hex(bn));
-    // printf("pkey: %s, okey: %s\n", str_privbkey, str_pubkey);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    rsa_key_set(2048, pkey);
-
+    // 鍵生成
+    // EVP_PKEY *pkey = EVP_PKEY_new();
+    // rsa_key_create(2048, pkey);
     BIGNUM *pubn = BN_new(), *pube = BN_new();
-    get_rsa_key(pkey, &pubn, &pube, NULL);
-    printf("鍵確認\npn: %s\npe: %s\n", BN_bn2hex(pubn), BN_bn2hex(pube));
+    // get_rsa_key(pkey, &pubn, &pube, NULL);
+    // printf("鍵確認\npn: %s\npe: %s\n", BN_bn2hex(pubn), BN_bn2hex(pube));
+    // RSA *priv_key = RSA_new();
+    // RSA *pub_key = RSA_new();
+    RSA *priv_key, *pub_key;
+    rsa_key_create(2048, priv_key, pub_key);
 
+#ifdef TEMP
+    // 暗号化
     dynamic_mem_t in;
     in.data = dynamic_new(&in, sizeof("RSAテスト"));
     chipher_data_t out;
     out.data.data = dynamic_new(&out.data, 2048);
     strncpy(in.data, "RSAテスト", in.size);
-    EVP_PKEY *inpkey = EVP_PKEY_new();
-    RSA_encrypt(inpkey, pubn, pube, in, &out);
+    // RSA_encrypt(pubn, pube, in, &out);
+    RSA_encrypt_evp(pubn, pube, in, &out);
     print("main 受け取り: ", (uint8_t *)out.data.data, out.str_len);
 
-    chipher_data_t de_text;
-    de_text.data.data = dynamic_new(&de_text.data, out.data.size);
-    de_text.str_len = 0;
-    BIGNUM *SKey = BN_new();
-    get_rsa_key(pkey, NULL, NULL, &SKey);
-    RSA_decrypt(SKey, pube, out, &de_text);
-    print("main 復号文受け取り: ", (uint8_t *)de_text.data.data, de_text.str_len);
+    // 復号
+    printf("\n[復号]\n");
+    chipher_data_t dec_text; //復号文
+    chipher_data_t enc_text; //暗号文
+    enc_text.data.data = dynamic_new(&enc_text.data, out.str_len);
+    enc_text.str_len = out.str_len;
+    memcpy(enc_text.data.data, out.data.data, out.str_len);
+    dec_text.data.data = dynamic_new(&dec_text.data, 5048);
+    dec_text.str_len = 0;
+    // BIGNUM *SKey = BN_new();
+    // get_rsa_key(pkey, NULL, NULL, &SKey);
+    // RSA_decrypt(pkey, enc_text, &dec_text);
+    RSA_decrypt_evp(pkey, enc_text, &dec_text);
+    print("main 復号文受け取り: ", (uint8_t *)dec_text.data.data, dec_text.str_len);
+
+    in.data = dynamic_free(&in);
+    out.data.data = dynamic_free(&out.data);
+    dec_text.data.data = dynamic_free(&dec_text.data);
+    enc_text.data.data = dynamic_free(&enc_text.data);
+#endif
 
     return 0;
 }
