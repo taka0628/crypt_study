@@ -24,6 +24,7 @@
 #define PRIVATE_KEY_PEM 0
 #define PRIVATE_KEY_FILE "private_key"
 #define PUBLIC_KEY_FILE "public_key"
+#define KEY_SIZE 2048
 
 typedef struct
 {
@@ -507,23 +508,14 @@ void RSA_decrypt_evp(EVP_PKEY *pkey, chipher_data_t in, chipher_data_t *out)
     OPENSSL_free(out);
 }
 
-void RSA_decrypt(EVP_PKEY *pkey, chipher_data_t in, chipher_data_t *out)
+void RSA_decrypt(RSA *priv_key, chipher_data_t in, chipher_data_t *out)
 {
     print("暗号文: ", (uint8_t *)in.data.data, in.str_len);
 
-    // 鍵設定
-    RSA *priv_key = RSA_new();
-    priv_key = EVP_PKEY_get0_RSA(pkey);
-    BIGNUM *priv_temp = BN_new();
-    RSA_get0_key(priv_key, NULL, NULL, priv_temp);
-    RSA_free(priv_key);
-    priv_key = RSA_new();
-    RSA_set0_key(priv_key, NULL, NULL, priv_temp);
-    BN_free(priv_temp);
-
+    // 暗号化
     chipher_data_t temp;
     temp.data.data = dynamic_new(&temp.data, in.str_len);
-    temp.str_len = RSA_private_decrypt(in.str_len, (const unsigned char *)in.data.data, (unsigned char *)temp.data.data, priv_key, RSA_PKCS1_PADDING);
+    temp.str_len = RSA_private_decrypt(in.str_len, (const unsigned char *)in.data.data, (unsigned char *)temp.data.data, priv_key, RSA_PKCS1_OAEP_PADDING);
     if (temp.str_len <= 0)
     {
         int error = ERR_get_error();
@@ -546,7 +538,8 @@ void RSA_decrypt(EVP_PKEY *pkey, chipher_data_t in, chipher_data_t *out)
         RSA_free(priv_key);
         ERROR("lengs error");
     }
-    RSA_free(priv_key);
+    temp.data.data = dynamic_free(&temp.data);
+    temp.str_len = 0;
 }
 // bool get_DH_key(DH *dh, )
 
@@ -562,21 +555,23 @@ int main()
     print("iv:\t", iv, sizeof(iv));
 
     // 鍵生成
-    rsa_key_create(2048);
+    rsa_key_create(KEY_SIZE);
     RSA *pub_key = get_rsa_key(PUBLIC_KEY_PEM, PUBLIC_KEY_FILE);
     RSA *priv_key = get_rsa_key(PRIVATE_KEY_PEM, PRIVATE_KEY_FILE);
+
+    printf("key_size\n pub_key: %d\npriv_key: %d\n", RSA_size(pub_key), RSA_size(priv_key));
 
     // 暗号化
     dynamic_mem_t in;
     in.data = dynamic_new(&in, sizeof("RSAテスト"));
     chipher_data_t out;
-    out.data.data = dynamic_new(&out.data, 2048);
+    out.data.data = dynamic_new(&out.data, KEY_SIZE);
     out.str_len = 0;
     strncpy(in.data, "RSAテスト", in.size);
     RSA_encrypt(pub_key, in, &out);
     // RSA_encrypt_evp(pubn, pube, in, &out);
     print("main 受け取り: ", (uint8_t *)out.data.data, out.str_len);
-#ifdef temp
+#if 1
     // 復号
     printf("\n[復号]\n");
     chipher_data_t dec_text; //復号文
@@ -584,18 +579,21 @@ int main()
     enc_text.data.data = dynamic_new(&enc_text.data, out.str_len);
     enc_text.str_len = out.str_len;
     memcpy(enc_text.data.data, out.data.data, out.str_len);
-    dec_text.data.data = dynamic_new(&dec_text.data, 5048);
+    dec_text.data.data = dynamic_new(&dec_text.data, KEY_SIZE);
     dec_text.str_len = 0;
     // BIGNUM *SKey = BN_new();
     // get_rsa_key(pkey, NULL, NULL, &SKey);
-    // RSA_decrypt(pkey, enc_text, &dec_text);
-    RSA_decrypt_evp(pkey, enc_text, &dec_text);
-    print("main 復号文受け取り: ", (uint8_t *)dec_text.data.data, dec_text.str_len);
+    RSA_decrypt(priv_key, enc_text, &dec_text);
+    // RSA_decrypt_evp(pkey, enc_text, &dec_text);
+    printf("main 復号文受け取り: %s\n", dec_text.data.data);
 
     in.data = dynamic_free(&in);
     out.data.data = dynamic_free(&out.data);
     dec_text.data.data = dynamic_free(&dec_text.data);
     enc_text.data.data = dynamic_free(&enc_text.data);
+
+    RSA_free(priv_key);
+    RSA_free(pub_key);
 
 #endif
     return 0;
