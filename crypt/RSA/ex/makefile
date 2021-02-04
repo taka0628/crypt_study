@@ -1,7 +1,7 @@
 TARGET_1 := iv_test
 SORCE_1 := iv_test.c
 CC	:= gcc
-CFLAGS	:= -Wall
+CFLAGS	:= -Wall -O1
 LIBS=-lssl -lcrypto -I.
 RM	:= /bin/rm
 
@@ -12,7 +12,7 @@ $(TARGET_1): $(SORCE_1)
 	$(CC) $(CFLAGS) $< -o $@
 
 debug:
-	$(CC) $(SORCE_1) -g -o $(TARGET_1) $(LIBS)
+	$(CC) $(SORCE_1) -g -O0 -o $(TARGET_1) $(LIBS)
 
 clean:
 	$(RM) -rf $(TARGET_1)
