@@ -1,0 +1,204 @@
+==14705== Memcheck, a memory error detector
+==14705== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==14705== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==14705== Command: /home/taka/source/crypt/RSA/ex/iv_test
+==14705== Parent PID: 12781
+==14705== 
+==14705== Conditional jump or move depends on uninitialised value(s)
+==14705==    at 0x4C33ADB: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4C38657: memset (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FF922C: drbg_ctr_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA194: RAND_DRBG_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA430: RAND_DRBG_bytes (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x109872: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba7490 is 0 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4C3865A: memset (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FF922C: drbg_ctr_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA194: RAND_DRBG_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA430: RAND_DRBG_bytes (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x109872: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba7498 is 8 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4C3865E: memset (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FF922C: drbg_ctr_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA194: RAND_DRBG_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA430: RAND_DRBG_bytes (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x109872: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba74a0 is 16 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4C38662: memset (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FF922C: drbg_ctr_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA194: RAND_DRBG_generate (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FFA430: RAND_DRBG_bytes (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x109872: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba74a8 is 24 bytes after a block of size 0 in arena "client"
+==14705== 
+==14705== Invalid read of size 16
+==14705==    at 0x4EC1269: aesni_ctr32_encrypt_blocks (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x588F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5B8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5A8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x558F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x548F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==  Address 0x5ba7490 is 0 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4EC1271: aesni_ctr32_encrypt_blocks (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x588F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5B8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5A8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x558F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x548F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==  Address 0x5ba7490 is 0 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid read of size 16
+==14705==    at 0x4EC127A: aesni_ctr32_encrypt_blocks (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x588F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5B8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5A8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x558F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x548F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==  Address 0x5ba74a0 is 16 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid write of size 8
+==14705==    at 0x4EC1283: aesni_ctr32_encrypt_blocks (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x588F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5B8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x5A8F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x558F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==    by 0x548F14C85D012E0A: ???
+==14705==    by 0xBA211238374FC824: ???
+==14705==  Address 0x5ba74a0 is 16 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid read of size 1
+==14705==    at 0x108F3B: print (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109914: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba7490 is 0 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid read of size 8
+==14705==    at 0x4C387E0: memmove (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x10927C: dynamic_cpy (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x10995D: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba7490 is 0 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== Invalid read of size 8
+==14705==    at 0x4C387EE: memmove (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x10927C: dynamic_cpy (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x10995D: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==  Address 0x5ba74a0 is 16 bytes after a block of size 0 alloc'd
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== 
+==14705== HEAP SUMMARY:
+==14705==     in use at exit: 2,384 bytes in 26 blocks
+==14705==   total heap usage: 3,066 allocs, 3,040 frees, 234,766 bytes allocated
+==14705== 
+==14705== 0 bytes in 1 blocks are definitely lost in loss record 1 of 12
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109846: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== 256 bytes in 1 blocks are definitely lost in loss record 7 of 12
+==14705==    at 0x4C33B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x109186: dynamic_new (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x1094E0: RSA_encrypt (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x109986: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== 544 (176 direct, 368 indirect) bytes in 1 blocks are definitely lost in loss record 10 of 12
+==14705==    at 0x4C31B0F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FCD228: CRYPTO_zalloc (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x500570E: RSA_new_method (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x5003D64: rsa_cb (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EE165C: ASN1_item_ex_new (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EDF3B5: ASN1_item_ex_d2i (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EDF5DA: ASN1_item_d2i (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FE5BBB: PEM_ASN1_read_bio (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FE39D4: PEM_ASN1_read (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x10900B: create_RSA (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x10914A: rsa_key_create (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705==    by 0x1097C8: main (in /home/taka/source/crypt/RSA/ex/iv_test)
+==14705== 
+==14705== 1,584 (176 direct, 1,408 indirect) bytes in 1 blocks are definitely lost in loss record 12 of 12
+==14705==    at 0x4C31B0F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==14705==    by 0x4FCD228: CRYPTO_zalloc (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x500570E: RSA_new_method (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x5003D64: rsa_cb (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EE165C: ASN1_item_ex_new (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EDF3B5: ASN1_item_ex_d2i (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4EDF5DA: ASN1_item_d2i (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x50018CD: old_rsa_priv_decode (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4ED8E9A: d2i_PrivateKey (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FE6672: PEM_read_bio_PrivateKey (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FE6A8B: PEM_read_PrivateKey (in /usr/local/lib/libcrypto.so.1.1)
+==14705==    by 0x4FE23BD: PEM_read_RSAPrivateKey (in /usr/local/lib/libcrypto.so.1.1)
+==14705== 
+==14705== LEAK SUMMARY:
+==14705==    definitely lost: 608 bytes in 4 blocks
+==14705==    indirectly lost: 1,776 bytes in 22 blocks
+==14705==      possibly lost: 0 bytes in 0 blocks
+==14705==    still reachable: 0 bytes in 0 blocks
+==14705==         suppressed: 0 bytes in 0 blocks
+==14705== 
+==14705== For counts of detected and suppressed errors, rerun with: -v
+==14705== Use --track-origins=yes to see where uninitialised values come from
+==14705== ERROR SUMMARY: 51 errors from 16 contexts (suppressed: 0 from 0)
