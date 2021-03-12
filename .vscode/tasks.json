@@ -1,0 +1,47 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: gcc openssl",
+            "command": "/usr/bin/gcc",
+            "args": [
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-lssl -lcrypto -I."
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "OpenSSL用"
+        },
+        {
+            "type": "cppbuild",
+            "label": "use makefile",
+            "command": "make",
+            "args": [
+                "${fileDirname}/${fileBasenameNoExtension}",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "ノーマルプログラム"
+        },
+    ],
+    "version": "2.0.0"
+}
