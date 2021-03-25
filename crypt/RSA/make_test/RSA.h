@@ -48,6 +48,7 @@ private:
     RSA *get_private_key() const;
     void set_public_key();
     void set_private_key();
+    rsa_c(rsa_c &temp);
 
 public:
     rsa_c();
@@ -56,8 +57,8 @@ public:
     int get_key_size_byte() const;
     RSA *get_public_key() const;
     void RSA_generate_key(int key_size_bit);
-    void RSA_public_encryption(const mem_c plane_tex, mem_c &enc_text);
-    void RSA_private_decording(const mem_c enc_text, mem_c &plane_text);
+    void RSA_public_encryption(const mem_c &plane_tex, mem_c &enc_text);
+    void RSA_private_decording(const mem_c &enc_text, mem_c &plane_text);
     void create_RSA(RSA *keypair, int mode, char *output_filename);
 
     ~rsa_c();

@@ -10,25 +10,17 @@
 class mem_c
 {
 private:
+    mem_c(const mem_c &temp);
+
 public:
     char *data;
     size_t size;
     size_t len;
     mem_c(size_t size);
     ~mem_c();
-    void cpy(const char *data, const int size);
+    void cpy(const char *data, const size_t size);
     size_t get_size() const;
     size_t get_len() const;
 };
-
-class mem
-{
-private:
-    /* data */
-public:
-    mem(/* args */);
-    ~mem();
-};
-
 
 #endif

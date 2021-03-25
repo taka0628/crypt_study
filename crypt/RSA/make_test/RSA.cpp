@@ -21,11 +21,16 @@ rsa_c::rsa_c(const int key_size_bit)
 
 rsa_c::~rsa_c()
 {
+    cout << ("RSA_free st") << endl;
     RSA_free(this->private_key);
     RSA_free(this->public_key);
+    cout << ("RSA_free ed") << endl;
     this->key_size_bit = 0;
     this->key_size_byte = 0;
 }
+
+rsa_c::rsa_c(rsa_c &temp){}
+
 
 void rsa_c::key_set(const int key_size_bit)
 {
@@ -91,10 +96,9 @@ void rsa_c::set_public_key()
 
 void rsa_c::set_private_key()
 {
-    RSA *rsa = RSA_new();
     FILE *fp = NULL;
     fp = fopen(PRIVATE_KEY_FILE, "rb");
-    PEM_read_RSAPublicKey(fp, &this->private_key, NULL, NULL);
+    PEM_read_RSAPrivateKey(fp, &this->private_key, NULL, NULL);
     fclose(fp);
 }
 
@@ -107,6 +111,7 @@ RSA *rsa_c::get_public_key() const
     else
     {
         cerr << "鍵が生成されていません";
+        return nullptr;
     }
 }
 
@@ -119,6 +124,7 @@ RSA *rsa_c::get_private_key() const
     else
     {
         cerr << "鍵が生成されていません";
+        return nullptr;
     }
 }
 
@@ -153,13 +159,13 @@ void print(const char *header, uint8_t *buf, int size)
     printf("\n");
 }
 
-void rsa_c::RSA_public_encryption(const mem_c plane_tex, mem_c &enc_text)
+void rsa_c::RSA_public_encryption(const mem_c &plane_tex, mem_c &enc_text)
 {
-    mem_c out(this->get_key_size_byte());
+    mem_c *temp = new mem_c(this->get_key_size_byte());
 
     // 暗号化
-    out.len = RSA_public_encrypt(strlen(plane_tex.data), (unsigned char *)plane_tex.data, (unsigned char *)out.data, rsa_c::get_public_key(), RSA_PKCS1_OAEP_PADDING);
-    if (out.len <= 0)
+    temp->len = RSA_public_encrypt(strlen(plane_tex.data), (unsigned char *)plane_tex.data, (unsigned char *)temp->data, rsa_c::get_public_key(), RSA_PKCS1_OAEP_PADDING);
+    if (temp->len <= 0)
     {
         int error = ERR_get_error();
         char *str_error = (char *)malloc(256);
@@ -167,17 +173,21 @@ void rsa_c::RSA_public_encryption(const mem_c plane_tex, mem_c &enc_text)
         printf("%s\n", str_error);
         free(str_error);
         ERROR("RSA_public_encrypt");
+        return;
     }
 
-    print("暗号化されたデータ: ", (uint8_t *)out.data, out.len);
-    printf("outlen: %ld\n", out.len);
+    print("暗号化されたデータ: ", (uint8_t *)temp->data, temp->len);
+    printf("outlen: %ld\n", temp->len);
     puts("data cpy");
-    enc_text.cpy(out.data, out.len);
+    enc_text.cpy(temp->data, temp->len);
+
+    delete temp;
 }
 
-void rsa_c::RSA_private_decording(const mem_c enc_text, mem_c &plane_text)
+void rsa_c::RSA_private_decording(const mem_c &enc_text, mem_c &plane_text)
 {
-    mem_c temp(enc_text.get_len());
+    mem_c temp(this->get_key_size_byte());
+    cout << "enc_text.len: " << enc_text.len;
     temp.len = RSA_private_decrypt(enc_text.len, (const unsigned char *)enc_text.data, (unsigned char *)temp.data, this->get_private_key(), RSA_PKCS1_OAEP_PADDING);
     if (temp.len <= 0)
     {
@@ -193,7 +203,7 @@ void rsa_c::RSA_private_decording(const mem_c enc_text, mem_c &plane_text)
     print("復号されたデータ: ", (uint8_t *)temp.data, temp.len);
     if (temp.len <= plane_text.size)
     {
-        plane_text.cpy(temp.data, temp.len);
+        plane_text.cpy(temp.data, static_cast<size_t>(temp.len));
     }
     else
     {

@@ -1,16 +1,9 @@
 TARGET := main
-OBJECTS += \
-		main.o \
-		mem.o \
-		RSA.o \
-
+OBJECTS += main.o mem.o RSA.o 
 CC	:= g++
 CFLAGS	:= -c -Wall -O1
 LIBS := -lssl -lcrypto -I.
 RM	:= /bin/rm
-
-# make:main.cpp RSA.cpp mem.cpp 
-# 	$(CC) ${CFLAG} main.cpp RSA.cpp mem.cpp -o ${TARGET} ${LIBS}
 
 all:${OBJECTS}
 	$(CC) ${OBJECTS} -o ${TARGET} ${LIBS}
