@@ -1,4 +1,5 @@
 #include <boost/python.hpp>
+#include "calc.h"
 
 std::string hello()
 {
@@ -15,6 +16,6 @@ BOOST_PYTHON_MODULE(CModule)
     using namespace boost::python;
     def("hello", &hello);
     def("add_cpp", &add_cpp);
-
+    def("isPrime", &isPrime);
 }
 

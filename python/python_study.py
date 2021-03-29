@@ -1,9 +1,8 @@
 import secrets
 import random
 import math
-import threading
 import time
-import numpy as np
+# import py_cpp_connect.CModule
 
 print("hellow")
 random.seed(time.localtime)
@@ -15,6 +14,7 @@ while True:
 
 
 isPrime = False
+st_time = time.perf_counter()
 while isPrime == False:
     while True:
         num = random.randrange(2 ** (bit - 1), 2 ** bit - 1)
@@ -30,6 +30,23 @@ while isPrime == False:
             isPrime = True
             break
         temp += 2
-
-    
+ed_time = time.perf_counter()
+py_time = ed_time - st_time
 print("bit num: {}".format(num))
+print(f"py_time: {py_time}")
+
+isPrime = False
+st_time = time.perf_counter()
+while isPrime == False:
+    while True:
+        num = random.randrange(2 ** (bit - 1), 2 ** bit - 1)
+    if (CModule.isPrime(num)):
+        isPrime = True
+        break
+    else:
+        continue
+
+ed_time = time.perf_counter()
+wrap_time = ed_time - st_time
+print("bit num: {}".format(num))
+print(f"wrap_time: {wrap_time}")
